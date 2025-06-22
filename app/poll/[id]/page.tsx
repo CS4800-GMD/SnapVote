@@ -1,9 +1,7 @@
 import PollClient from './PollClient'
+import { use } from 'react'
 
-export default async function Page({
-  params,
-}: {
-  params: Record<string, string>
-}) {
-  return <PollClient id={params.id} />
+export default function Page(props: { params: Promise<{ id: string }> }) {
+  const { id } = use(props.params)
+  return <PollClient id={id} />
 }
