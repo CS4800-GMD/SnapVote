@@ -81,17 +81,5 @@ export default function PollClient({ id }: { id: string }) {
       </ul>
     </div>
   )
-  
-    useEffect(() => {
-    const test = async () => {
-        const { data, error } = await supabase
-        .from('polls')
-        .select('id, question')
-
-        console.log('All polls:', data)
-    }
-
-    test()
-    }, [])
 }
 
