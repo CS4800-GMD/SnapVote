@@ -43,26 +43,33 @@ export default function PollClient({ id }: { id: string }) {
           }
         }
 
-        // Fetch options with vote counts
+        // Fetch options
         const { data: optionsData, error: optionsError } = await supabase
           .from('options')
-          .select(`
-            id,
-            text,
-            votes!inner(count)
-          `)
+          .select('id, text')
           .eq('poll_id', id)
 
         if (optionsError) throw optionsError
 
         if (optionsData) {
-          const processedOptions = (optionsData as { id: string; text: string; votes?: { count: number }[] }[]).map((opt) => ({
-            id: opt.id,
-            text: opt.text,
-            vote_count: opt.votes?.[0]?.count || 0
-          }))
-          setOptions(processedOptions)
-          setTotalVotes(processedOptions.reduce((sum, opt) => sum + opt.vote_count, 0))
+          // Fetch vote counts for each option separately
+          const optionsWithVotes = await Promise.all(
+            optionsData.map(async (option) => {
+              const { count } = await supabase
+                .from('votes')
+                .select('*', { count: 'exact', head: true })
+                .eq('option_id', option.id)
+              
+              return {
+                id: option.id,
+                text: option.text,
+                vote_count: count || 0
+              }
+            })
+          )
+          
+          setOptions(optionsWithVotes)
+          setTotalVotes(optionsWithVotes.reduce((sum, opt) => sum + opt.vote_count, 0))
         }
       } catch (error) {
         console.error('Error fetching poll:', error)
