@@ -136,19 +136,29 @@ export default function PollClient({ id }: { id: string }) {
   const handleVote = async (optionId: string) => {
     if (votedOption || isExpired) return // Prevent voting if already voted or expired
     
+    console.log('=== VOTE DEBUG START ===')
     console.log('Attempting to vote for option:', optionId)
+    console.log('Current environment:', process.env.NODE_ENV)
+    console.log('Supabase URL available:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('Supabase Key available:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    console.log('Network status:', navigator.onLine ? 'Online' : 'Offline')
+    console.log('Current URL:', window.location.href)
+    
     setIsVoting(true)
     setVotedOption(optionId)
 
     try {
-      console.log('Inserting vote into database...')
-      console.log('Supabase client:', supabase)
-      console.log('Option ID being inserted:', optionId)
-      
-      // Generate a session ID for this vote
+      console.log('Generating session ID...')
       const sessionId = generateUUID()
       console.log('Generated session ID:', sessionId)
       
+      console.log('Creating vote payload:', {
+        option_id: optionId,
+        session_id: sessionId
+      })
+      
+      console.log('Making Supabase request...')
+      const startTime = Date.now()
       const { data, error } = await supabase
         .from('votes')
         .insert([{ 
@@ -156,11 +166,21 @@ export default function PollClient({ id }: { id: string }) {
           session_id: sessionId
         }])
         .select()
-
-      console.log('Supabase response:', { data, error })
+      const endTime = Date.now()
+      
+      console.log(`Request completed in ${endTime - startTime}ms`)
+      console.log('Supabase response received:', { 
+        hasData: !!data, 
+        dataLength: data?.length,
+        hasError: !!error,
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        errorDetails: error?.details
+      })
 
       if (error) {
-        console.error('Supabase error details:', {
+        console.error('=== SUPABASE ERROR ===')
+        console.error('Error details:', {
           message: error.message,
           code: error.code,
           details: error.details,
@@ -170,6 +190,7 @@ export default function PollClient({ id }: { id: string }) {
       }
       
       console.log('Vote successfully inserted:', data)
+      console.log('=== VOTE SUCCESS ===')
       
       // Manually update the UI since real-time is disabled
       setOptions((prevOptions) =>
@@ -183,16 +204,19 @@ export default function PollClient({ id }: { id: string }) {
       setTotalVotes((prev) => prev + 1)
       
     } catch (error) {
-      console.error('Error voting - full error object:', error)
+      console.error('=== VOTE ERROR ===')
       console.error('Error type:', typeof error)
       console.error('Error constructor:', error?.constructor?.name)
+      console.error('Full error object:', error)
       
       if (error && typeof error === 'object') {
         console.error('Error keys:', Object.keys(error))
         const errorObj = error as Record<string, any>
         if (errorObj.message) {
-          console.error('Error message property:', errorObj.message)
-          console.error('Error toString:', errorObj.toString())
+          console.error('Error message:', errorObj.message)
+        }
+        if (errorObj.stack) {
+          console.error('Error stack:', errorObj.stack)
         }
       }
       
@@ -210,9 +234,11 @@ export default function PollClient({ id }: { id: string }) {
         errorMessage = String(error)
       }
       
+      console.error('Final error message:', errorMessage)
       alert(`Failed to vote: ${errorMessage}`)
     } finally {
       setIsVoting(false)
+      console.log('=== VOTE DEBUG END ===')
     }
   }
 
