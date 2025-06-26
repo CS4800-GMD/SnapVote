@@ -24,8 +24,12 @@ CREATE TABLE IF NOT EXISTS options (
 CREATE TABLE IF NOT EXISTS votes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   option_id UUID REFERENCES options(id) ON DELETE CASCADE,
+  session_id UUID DEFAULT gen_random_uuid(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add session_id column if it doesn't exist (for existing tables)
+ALTER TABLE votes ADD COLUMN IF NOT EXISTS session_id UUID DEFAULT gen_random_uuid();
 
 -- Enable Row Level Security (RLS) - safe to run multiple times
 ALTER TABLE polls ENABLE ROW LEVEL SECURITY;

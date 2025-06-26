@@ -23,6 +23,7 @@ export default function PollClient({ id }: { id: string }) {
   useEffect(() => {
     const fetchPoll = async () => {
       try {
+        console.log('Fetching poll data for ID:', id)
         // Fetch poll data
         const { data: pollData, error: pollError } = await supabase
           .from('polls')
@@ -30,7 +31,12 @@ export default function PollClient({ id }: { id: string }) {
           .eq('id', id)
           .single()
 
-        if (pollError) throw pollError
+        if (pollError) {
+          console.error('Error fetching poll:', pollError)
+          throw pollError
+        }
+        
+        console.log('Poll data fetched:', pollData)
         if (pollData) {
           setQuestion(pollData.question)
           setExpiresAt(pollData.expires_at)
@@ -44,13 +50,18 @@ export default function PollClient({ id }: { id: string }) {
         }
 
         // Fetch options
+        console.log('Fetching options for poll...')
         const { data: optionsData, error: optionsError } = await supabase
           .from('options')
           .select('id, text')
           .eq('poll_id', id)
 
-        if (optionsError) throw optionsError
+        if (optionsError) {
+          console.error('Error fetching options:', optionsError)
+          throw optionsError
+        }
 
+        console.log('Options data fetched:', optionsData)
         if (optionsData) {
           // Fetch vote counts for each option separately
           const optionsWithVotes = await Promise.all(
@@ -68,6 +79,7 @@ export default function PollClient({ id }: { id: string }) {
             })
           )
           
+          console.log('Options with vote counts:', optionsWithVotes)
           setOptions(optionsWithVotes)
           setTotalVotes(optionsWithVotes.reduce((sum, opt) => sum + opt.vote_count, 0))
         }
@@ -81,49 +93,123 @@ export default function PollClient({ id }: { id: string }) {
     fetchPoll()
   }, [id])
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('votes-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'votes' },
-        (payload) => {
-          const votedOptionId = payload.new.option_id
+  // useEffect(() => {
+  //   console.log('Setting up real-time subscription for votes...')
+  //   const channel = supabase
+  //     .channel(`votes-realtime-${id}`)
+  //     .on(
+  //       'postgres_changes',
+  //       { 
+  //         event: 'INSERT', 
+  //         schema: 'public', 
+  //         table: 'votes'
+  //       },
+  //       (payload) => {
+  //         console.log('Received real-time vote update:', payload)
+  //         const votedOptionId = payload.new.option_id
           
-          setOptions((prevOptions) =>
-            prevOptions.map((opt) =>
-              opt.id === votedOptionId
-                ? { ...opt, vote_count: opt.vote_count + 1 }
-                : opt
-            )
-          )
+  //         // Only update if the vote is for an option in this poll
+  //         if (options.some(opt => opt.id === votedOptionId)) {
+  //           setOptions((prevOptions) =>
+  //             prevOptions.map((opt) =>
+  //               opt.id === votedOptionId
+  //                 ? { ...opt, vote_count: opt.vote_count + 1 }
+  //                 : opt
+  //             )
+  //           )
           
-          setTotalVotes((prev) => prev + 1)
-        }
-      )
-      .subscribe()
+  //           setTotalVotes((prev) => prev + 1)
+  //         }
+  //       }
+  //     )
+  //     .subscribe((status) => {
+  //         console.log('Real-time subscription status:', status)
+  //       })
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
+  //   return () => {
+  //     console.log('Cleaning up real-time subscription...')
+  //     supabase.removeChannel(channel)
+  //   }
+  // }, [id, options])
 
   const handleVote = async (optionId: string) => {
     if (votedOption || isExpired) return // Prevent voting if already voted or expired
     
+    console.log('Attempting to vote for option:', optionId)
     setIsVoting(true)
     setVotedOption(optionId)
 
     try {
-      const { error } = await supabase
+      console.log('Inserting vote into database...')
+      console.log('Supabase client:', supabase)
+      console.log('Option ID being inserted:', optionId)
+      
+      // Generate a session ID for this vote
+      const sessionId = crypto.randomUUID()
+      console.log('Generated session ID:', sessionId)
+      
+      const { data, error } = await supabase
         .from('votes')
-        .insert([{ option_id: optionId }])
+        .insert([{ 
+          option_id: optionId,
+          session_id: sessionId
+        }])
+        .select()
 
-      if (error) throw error
+      console.log('Supabase response:', { data, error })
+
+      if (error) {
+        console.error('Supabase error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        throw error
+      }
+      
+      console.log('Vote successfully inserted:', data)
+      
+      // Manually update the UI since real-time is disabled
+      setOptions((prevOptions) =>
+        prevOptions.map((opt) =>
+          opt.id === optionId
+            ? { ...opt, vote_count: opt.vote_count + 1 }
+            : opt
+        )
+      )
+      
+      setTotalVotes((prev) => prev + 1)
+      
     } catch (error) {
-      console.error('Error voting:', error)
+      console.error('Error voting - full error object:', error)
+      console.error('Error type:', typeof error)
+      console.error('Error constructor:', error?.constructor?.name)
+      
+      if (error && typeof error === 'object') {
+        console.error('Error keys:', Object.keys(error))
+        const errorObj = error as Record<string, any>
+        if (errorObj.message) {
+          console.error('Error message property:', errorObj.message)
+          console.error('Error toString:', errorObj.toString())
+        }
+      }
+      
       setVotedOption(null)
-      alert('Failed to vote. Please try again.')
+      
+      let errorMessage = 'Unknown error'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (error && typeof error === 'object') {
+        const errorObj = error as Record<string, any>
+        if (errorObj.message) {
+          errorMessage = String(errorObj.message)
+        }
+      } else if (error) {
+        errorMessage = String(error)
+      }
+      
+      alert(`Failed to vote: ${errorMessage}`)
     } finally {
       setIsVoting(false)
     }
