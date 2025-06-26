@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
+import { generateUUID } from '../../../lib/utils'
 import Link from 'next/link'
 
 type Option = {
@@ -145,7 +146,7 @@ export default function PollClient({ id }: { id: string }) {
       console.log('Option ID being inserted:', optionId)
       
       // Generate a session ID for this vote
-      const sessionId = crypto.randomUUID()
+      const sessionId = generateUUID()
       console.log('Generated session ID:', sessionId)
       
       const { data, error } = await supabase

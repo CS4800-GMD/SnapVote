@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
+import { generateUUID } from '../../lib/utils'
 
 export default function TestVote() {
   const [testOptionId, setTestOptionId] = useState('')
@@ -64,7 +65,7 @@ export default function TestVote() {
         .from('votes')
         .insert([{ 
           option_id: testOptionId,
-          session_id: crypto.randomUUID()
+          session_id: generateUUID()
         }])
         .select()
 
