@@ -1,6 +1,6 @@
 import PollClient from './PollClient'
 
-export default async function PollPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default function PollPage({ params }: { params: { id: string } }) {
+  const { id } = params
   return <PollClient id={id} />
 }

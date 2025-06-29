@@ -22,4 +22,19 @@ export function generateUUID(): string {
  */
 export function supportsCryptoUUID(): boolean {
   return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+}
+
+/**
+ * Get or create a persistent anonymous session ID stored in localStorage.
+ * This is used to ensure a single vote per browser for each poll.
+ */
+export function getPersistentSessionId(key = 'snapvote-session-id'): string {
+  if (typeof window === 'undefined') return generateUUID()
+
+  let id = localStorage.getItem(key)
+  if (!id) {
+    id = generateUUID()
+    localStorage.setItem(key, id)
+  }
+  return id
 } 

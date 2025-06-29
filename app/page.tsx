@@ -9,6 +9,7 @@ export default function Home() {
   const [options, setOptions] = useState(['', ''])
   const [isCreating, setIsCreating] = useState(false)
   const [expirationHours, setExpirationHours] = useState(0)
+  const [formError, setFormError] = useState('')
   const router = useRouter()
 
   const addOption = () => {
@@ -27,10 +28,13 @@ export default function Home() {
     setOptions(newOptions)
   }
 
+  const isFormValid = question.trim().length > 0 && options.filter(opt => opt.trim().length > 0).length >= 2;
+
   const createPoll = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError('')
     if (!question.trim() || options.some(opt => !opt.trim())) {
-      alert('Please fill in all fields')
+      setFormError('Please fill in all fields')
       return
     }
 
@@ -71,7 +75,7 @@ export default function Home() {
       router.push(`/poll/${pollData.id}`)
     } catch (error) {
       console.error('Error creating poll:', error)
-      alert('Failed to create poll. Please try again.')
+      setFormError('Failed to create poll. Please try again.')
     } finally {
       setIsCreating(false)
     }
@@ -96,6 +100,14 @@ export default function Home() {
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Create instant polls and get real-time results. Simple, fast, and beautiful voting for everyone.
           </p>
+          <div className="mt-6">
+            <a
+              href="/polls"
+              className="inline-block px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+            >
+              View All Polls
+            </a>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -106,6 +118,9 @@ export default function Home() {
             </h2>
 
             <form onSubmit={createPoll} className="space-y-6">
+              {formError && (
+                <div className="bg-red-100 text-red-700 px-4 py-2 rounded mb-2 text-sm">{formError}</div>
+              )}
               {/* Question Input */}
               <div>
                 <label htmlFor="question" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -206,7 +221,7 @@ export default function Home() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isCreating}
+                disabled={!isFormValid || isCreating}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isCreating ? (
