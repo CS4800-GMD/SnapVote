@@ -43,9 +43,13 @@ export default function Home() {
     try {
       // Calculate expiration time
       const expiresAt = expirationHours > 0 
-        ? new Date(Date.now() + expirationHours * 60 * 60 * 1000).toISOString()
+        ? (() => {
+            const localDate = new Date(Date.now() + expirationHours * 60 * 60 * 1000)
+            localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset())
+            return localDate.toISOString()
+          })()
         : null
-
+        
       // Create poll
       const { data: pollData, error: pollError } = await supabase
         .from('polls')
