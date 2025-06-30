@@ -146,11 +146,11 @@ export default function TestVote() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-black-50 p-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Vote Test Page</h1>
         
-        <div className="bg-white p-6 rounded-lg shadow-md space-y-4">
+        <div className="bg-black p-6 rounded-lg shadow-md space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Option ID to test:</label>
             <input
@@ -198,7 +198,7 @@ export default function TestVote() {
           
           <div className="mt-4">
             <label className="block text-sm font-medium mb-2">Result:</label>
-            <pre className="bg-gray-100 p-4 rounded text-sm whitespace-pre-wrap">
+            <pre className="bg-darkgray-100 p-4 rounded text-sm whitespace-pre-wrap">
               {result || 'No result yet'}
             </pre>
           </div>
