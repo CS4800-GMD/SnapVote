@@ -14,7 +14,8 @@ type Option = {
 export default function PollClient({ id }: { id: string }) {
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState<Option[]>([])
-  const [totalVotes, setTotalVotes] = useState(0)
+  // const [totalVotes, setTotalVotes] = useState(0)
+  const totalVotes = options.reduce((sum, opt) => sum + (opt.vote_count || 0), 0)
   const [votedOption, setVotedOption] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isVoting, setIsVoting] = useState(false)
@@ -76,7 +77,7 @@ export default function PollClient({ id }: { id: string }) {
 
           console.log('Options with aggregated vote counts:', optionsWithVotes)
           setOptions(optionsWithVotes)
-          setTotalVotes(optionsWithVotes.reduce((sum: number, opt) => sum + opt.vote_count, 0))
+          // setTotalVotes(optionsWithVotes.reduce((sum: number, opt) => sum + opt.vote_count, 0))
         }
       } catch (error) {
         console.error('Error fetching poll:', error)
@@ -88,44 +89,35 @@ export default function PollClient({ id }: { id: string }) {
     fetchPoll()
   }, [id])
 
-  // useEffect(() => {
-  //   console.log('Setting up real-time subscription for votes...')
-  //   const channel = supabase
-  //     .channel(`votes-realtime-${id}`)
-  //     .on(
-  //       'postgres_changes',
-  //       { 
-  //         event: 'INSERT', 
-  //         schema: 'public', 
-  //         table: 'votes'
-  //       },
-  //       (payload) => {
-  //         console.log('Received real-time vote update:', payload)
-  //         const votedOptionId = payload.new.option_id
-          
-  //         // Only update if the vote is for an option in this poll
-  //         if (options.some(opt => opt.id === votedOptionId)) {
-  //           setOptions((prevOptions) =>
-  //             prevOptions.map((opt) =>
-  //               opt.id === votedOptionId
-  //                 ? { ...opt, vote_count: opt.vote_count + 1 }
-  //                 : opt
-  //             )
-  //           )
-          
-  //           setTotalVotes((prev) => prev + 1)
-  //         }
-  //       }
-  //     )
-  //     .subscribe((status) => {
-  //         console.log('Real-time subscription status:', status)
-  //       })
+  useEffect(() => {
+    const channel = supabase
+      .channel('votes-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'votes',
+        },
+        (payload) => {
+          const newVote = payload.new
+          const votedOptionId = newVote.option_id
 
-  //   return () => {
-  //     console.log('Cleaning up real-time subscription...')
-  //     supabase.removeChannel(channel)
-  //   }
-  // }, [id, options])
+          setOptions((prevOptions) =>
+            prevOptions.map((opt) =>
+              opt.id === votedOptionId
+                ? { ...opt, vote_count: (opt.vote_count || 0) + 1 }
+                : opt
+            )
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const handleVote = async (optionId: string) => {
     if (votedOption || isExpired) return // Prevent voting if already voted or expired
@@ -187,17 +179,6 @@ export default function PollClient({ id }: { id: string }) {
       
       console.log('Vote successfully inserted:', data)
       console.log('=== VOTE SUCCESS ===')
-      
-      // Manually update the UI since real-time is disabled
-      setOptions((prevOptions) =>
-        prevOptions.map((opt) =>
-          opt.id === optionId
-            ? { ...opt, vote_count: opt.vote_count + 1 }
-            : opt
-        )
-      )
-      
-      setTotalVotes((prev) => prev + 1)
       
     } catch (error) {
       console.error('=== VOTE ERROR ===')
