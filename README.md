@@ -1,6 +1,7 @@
 # SnapVote - Instant Polls & Real-time Voting
 
 A beautiful, modern voting application built with Next.js, TypeScript, Tailwind CSS, and Supabase for real-time functionality.
+
 https://snap-vote-gules.vercel.app/
 
 ## Usage
